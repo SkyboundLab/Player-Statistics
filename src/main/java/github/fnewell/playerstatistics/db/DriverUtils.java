@@ -115,14 +115,13 @@ public class DriverUtils {
     private static void downloadFile(String fileUrl, Path destination) throws IOException, InterruptedException {
         PlayerStatistics.LOGGER.info("Downloading {} to {}", fileUrl, destination);
 
-        HttpResponse<Path> response;
-        try (HttpClient client = HttpClient.newHttpClient()) {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(fileUrl))
-                    .GET()
-                    .build();
-            response = client.send(request, HttpResponse.BodyHandlers.ofFile(destination));
-        }
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(fileUrl))
+                .GET()
+                .build();
+
+        HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFile(destination));
 
         if (response.statusCode() != 200) {
             throw new IOException("Failed to download file: " + fileUrl + " (HTTP " + response.statusCode() + ")");

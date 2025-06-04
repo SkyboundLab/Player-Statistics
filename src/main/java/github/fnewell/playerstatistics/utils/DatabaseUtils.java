@@ -105,13 +105,14 @@ public class DatabaseUtils {
         String countSQL = "SELECT COUNT(*) AS total FROM uuid_map WHERE player_nick IS NULL";
         String fetchMissingNicksSQL = "SELECT id, player_uuid FROM uuid_map WHERE player_nick IS NULL";
 
-        try (ExecutorService executor = Executors.newFixedThreadPool(ConfigUtils.config.getInt("sync-thread-count"))) {
+        ExecutorService executor = Executors.newFixedThreadPool(ConfigUtils.config.getInt("sync-thread-count"));
+        try {
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor created (missing nicks)"); }
             PlayerStatistics.executors.add(executor);   // Add the executor to the list of executors for cleanup
 
             // Get total number of missing player nicks
             try (PreparedStatement countStmt = connection.prepareStatement(countSQL);
-                 ResultSet countRs = countStmt.executeQuery()) {
+                ResultSet countRs = countStmt.executeQuery()) {
 
                 if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Counting missing player nicks ..."); }
 
@@ -125,7 +126,7 @@ public class DatabaseUtils {
 
             // Fetch missing player nicks
             try (PreparedStatement fetchStmt = connection.prepareStatement(fetchMissingNicksSQL);
-                 ResultSet rs = fetchStmt.executeQuery()) {
+                ResultSet rs = fetchStmt.executeQuery()) {
 
                 if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Fetching missing player nicks ..."); }
 
@@ -171,6 +172,11 @@ public class DatabaseUtils {
             Thread.currentThread().interrupt();
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
             PlayerStatistics.LOGGER.error("Executor interrupted (missing nicks): {}", e.getMessage());
+        } finally {
+            // Ensure executor is shutdown even if an exception occurs
+            if (!executor.isShutdown()) {
+                executor.shutdownNow();
+            }
         }
     }
 
@@ -402,7 +408,7 @@ public class DatabaseUtils {
                                 VALUES %s
                                 ON CONFLICT (player_id, stat_name) DO UPDATE SET amount = excluded.amount
                             """.formatted(tableName, String.join(", ", statements));
-                    case null, default -> throw new IllegalArgumentException("Unsupported database type: " + finalDbType);
+                    default -> throw new IllegalArgumentException("Unsupported database type: " + finalDbType);
                 };
 
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -508,7 +514,8 @@ public class DatabaseUtils {
 
         int sync_thread_count = "SQLITE".equalsIgnoreCase(DB_TYPE) ? 1 : ConfigUtils.config.getInt("sync-thread-count");
 
-        try (ExecutorService executor = Executors.newFixedThreadPool(sync_thread_count)) {
+        ExecutorService executor = Executors.newFixedThreadPool(sync_thread_count);
+        try {
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor created (positions)"); }
             PlayerStatistics.executors.add(executor);   // Add the executor to the list of executors for cleanup
 
@@ -542,14 +549,18 @@ public class DatabaseUtils {
 
             executor.shutdown();
             if (!executor.awaitTermination(3, TimeUnit.MINUTES)) {
-                executor.shutdown();
+                executor.shutdownNow();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
             PlayerStatistics.LOGGER.error("Executor interrupted (positions): {}", e.getMessage());
+        } finally {
+            // Ensure executor is shutdown even if an exception occurs
+            if (!executor.isShutdown()) {
+                executor.shutdownNow();
+            }
         }
-
     }
 
     /**
@@ -562,7 +573,7 @@ public class DatabaseUtils {
     private static void updatePositionsMySQL(Connection connection, String tableName) throws SQLException {
         if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Updating positions in table (MySQL/MariaDB): {}", tableName); }
 
-        String tempTableName = "ranked_data_" + Thread.currentThread().threadId();
+        String tempTableName = "ranked_data_" + Thread.currentThread().getId();
 
         String createTempTableSQL = """
             CREATE TEMPORARY TABLE %s AS

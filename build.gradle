@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version '1.9-SNAPSHOT'
+	id 'fabric-loom' version '1.10-SNAPSHOT'
 	id 'maven-publish'
 }
 
@@ -40,6 +40,7 @@ dependencies {
 	//include(implementation 'org.mariadb.jdbc:mariadb-java-client:3.5.1')	// MariaDB
 	//include(implementation 'org.xerial:sqlite-jdbc:3.47.1.0')				// SQLite
 	//include(implementation 'org.postgresql:postgresql:42.7.4')			// PostgreSQL
+	include(implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0')
 
 	modImplementation("net.fabricmc:fabric-language-kotlin:1.13.0+kotlin.2.1.0")
 
@@ -68,7 +69,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = 17
 }
 
 java {
@@ -77,8 +78,8 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
 }
 
 jar {

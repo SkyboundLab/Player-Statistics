@@ -122,7 +122,8 @@ public class StatSyncTask {
 
                 if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Syncing player stats ..."); }
 
-                try (ExecutorService executor = Executors.newFixedThreadPool(ConfigUtils.config.getInt("sync-thread-count"))) {
+                ExecutorService executor = Executors.newFixedThreadPool(ConfigUtils.config.getInt("sync-thread-count"));
+                try {
                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Executor created."); }
                     PlayerStatistics.executors.add(executor);   // Add the executor to the list of executors for cleanup
 
@@ -138,9 +139,9 @@ public class StatSyncTask {
                                     JsonNode stats = rootNode.get("stats");
 
                                     if (stats != null) {
-                                        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("/Syncing player stats for UUID: {} (executor: {})", playerUUID, Thread.currentThread().threadId()); }
+                                        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("/Syncing player stats for UUID: {} (executor: {})", playerUUID, Thread.currentThread().getId()); }
                                         syncPlayerStats(connection, playerUUID, lastModified, stats);
-                                        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("\\Player stats synced for UUID: {} (executor: {})", playerUUID, Thread.currentThread().threadId()); }
+                                        if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("\\Player stats synced for UUID: {} (executor: {})", playerUUID, Thread.currentThread().getId()); }
                                     }
                                 } catch (Exception e) {
                                     if (PlayerStatistics.DEBUG) { PlayerStatistics.LOGGER.info("Trace: ", e); }
@@ -161,6 +162,11 @@ public class StatSyncTask {
 
                     status = "Idle";
                     return false;
+                } finally {
+                    // Ensure executor is properly shutdown even if an exception occurs
+                    if (!executor.isShutdown()) {
+                        executor.shutdownNow();
+                    }
                 }
 
 
